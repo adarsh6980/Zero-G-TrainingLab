@@ -1,62 +1,63 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-namespace ZeroGTrainingLab
+public class GravityManager : MonoBehaviour
 {
-    /// <summary>
-    /// Manages the physics state for zero-gravity simulation.
-    /// Disables global gravity and applies micro-drag and drift to registered objects.
-    /// </summary>
-    public class GravityManager : MonoBehaviour
+    public static GravityManager Instance { get; private set; }
+    
+    [SerializeField] private float gravityScale = 0f; // 0 = zero gravity
+    [SerializeField] private Vector3 customGravityDirection = Vector3.zero;
+    [SerializeField] private float airResistance = 0.99f; // Simulate space vacuum
+    
+    private List<Rigidbody> affectedBodies = new List<Rigidbody>();
+
+    private void Awake()
     {
-        [Header("Zero-G Settings")]
-        [Tooltip("Linear drag applied to emulate air resistance in the station.")]
-        public float microGravityDrag = 0.1f;
-        
-        [Tooltip("Angular drag applied to emulate air resistance.")]
-        public float microGravityAngularDrag = 0.05f;
-
-        [Tooltip("Simulates slight ventilation currents or station rotation.")]
-        public float ambientDriftForce = 0.02f;
-
-        private List<Rigidbody> floatingObjects = new List<Rigidbody>();
-
-        private void Awake()
+        if (Instance != null && Instance != this)
         {
-            // Disable global gravity for the scene
-            Physics.gravity = Vector3.zero;
+            Destroy(gameObject);
+            return;
         }
+        Instance = this;
+    }
 
-        public void RegisterObject(Rigidbody rb)
+    private void Start()
+    {
+        // Set physics to zero-gravity
+        Physics.gravity = Vector3.zero;
+    }
+
+    private void FixedUpdate()
+    {
+        // Apply air resistance to all objects
+        foreach (var body in affectedBodies)
         {
-            if (!floatingObjects.Contains(rb))
+            if (body != null)
             {
-                floatingObjects.Add(rb);
-                rb.useGravity = false;
-                rb.drag = microGravityDrag;
-                rb.angularDrag = microGravityAngularDrag;
+                // Simulate space vacuum - gradual velocity reduction
+                body.velocity *= airResistance;
             }
         }
+    }
 
-        public void UnregisterObject(Rigidbody rb)
-        {
-            if (floatingObjects.Contains(rb))
-            {
-                floatingObjects.Remove(rb);
-            }
-        }
+    public void RegisterBody(Rigidbody body)
+    {
+        if (!affectedBodies.Contains(body))
+            affectedBodies.Add(body);
+    }
 
-        private void FixedUpdate()
-        {
-            // Apply ambient drift
-            foreach (var rb in floatingObjects)
-            {
-                if (!rb.isKinematic)
-                {
-                    // Random small torque for natural floating feel
-                    rb.AddTorque(Random.insideUnitSphere * ambientDriftForce * Time.fixedDeltaTime, ForceMode.Impulse);
-                }
-            }
-        }
+    public void UnregisterBody(Rigidbody body)
+    {
+        affectedBodies.Remove(body);
+    }
+
+    public Vector3 GetGravityDirection()
+    {
+        return customGravityDirection;
+    }
+
+    public float GetGravityScale()
+    {
+        return gravityScale;
     }
 }

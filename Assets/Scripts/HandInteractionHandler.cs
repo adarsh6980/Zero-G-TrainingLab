@@ -1,103 +1,87 @@
 using UnityEngine;
-using UnityEngine.Events;
+using UnityEngine.XR.Hands;
 
-namespace ZeroGTrainingLab
+public class HandInteractionHandler : MonoBehaviour
 {
-    /// <summary>
-    /// Abstract base for handling hand interactions.
-    /// Intended to be used with XR Hands or Oculus Integration.
-    /// </summary>
-    public class HandInteractionHandler : MonoBehaviour
+    [SerializeField] private XRHandTrackingEvents handTrackingEvents;
+    [SerializeField] private float grabThreshold = 0.8f;
+    
+    private XRHand hand;
+    private bool isGrabbing = false;
+    private GameObject currentGrabbedObject = null;
+
+    private void OnEnable()
     {
-        [Header("Interaction Settings")]
-        public float grabRadius = 0.1f;
-        public LayerMask interactableLayer;
-        public Transform pinchPoint; // Assign the index finger tip or pinch center
-
-        [Header("Events")]
-        public UnityEvent<GameObject> onObjectGrabbed;
-        public UnityEvent<GameObject> onObjectReleased;
-
-        private GameObject currentHeldObject = null;
-        private bool isPinching = false;
-
-        private void Update()
+        if (handTrackingEvents != null)
         {
-            CheckHandInput();
+            handTrackingEvents.handJointsUpdated += OnHandJointsUpdated;
         }
+    }
 
-        private void CheckHandInput()
+    private void OnDisable()
+    {
+        if (handTrackingEvents != null)
         {
-            // Placeholder: Replace with actual XR Hands SDK data access
-            // float pinchStrength = HandTrackingSubsystem.GetPinchStrength();
-            float pinchStrength = 0f; // Mock value
+            handTrackingEvents.handJointsUpdated -= OnHandJointsUpdated;
+        }
+    }
 
-            bool currentlyPinching = pinchStrength > 0.8f;
-
-            if (currentlyPinching && !isPinching)
+    private void OnHandJointsUpdated(XRHandJointsUpdatedEventArgs eventArgs)
+    {
+        // Detect grab gesture by checking finger pinch
+        if (DetectGrabGesture())
+        {
+            if (!isGrabbing)
             {
-                AttemptGrab();
-            }
-            else if (!currentlyPinching && isPinching)
-            {
-                ReleaseObject();
-            }
-
-            isPinching = currentlyPinching;
-
-            if (currentHeldObject != null)
-            {
-                // Move object to hand position (simple follow)
-                // In a real scenario, use velocity-based movement or rigid body joints
-                currentHeldObject.transform.position = pinchPoint.position;
-                currentHeldObject.transform.rotation = pinchPoint.rotation;
+                HandleGrabStart();
+                isGrabbing = true;
             }
         }
-
-        private void AttemptGrab()
+        else
         {
-            Collider[] hits = Physics.OverlapSphere(pinchPoint.position, grabRadius, interactableLayer);
-            if (hits.Length > 0)
+            if (isGrabbing)
             {
-                // Grab the closest one (simple logic)
-                currentHeldObject = hits[0].gameObject;
-                
-                var manipulatable = currentHeldObject.GetComponent<ObjectManipulation>();
-                if (manipulatable != null)
+                HandleGrabEnd();
+                isGrabbing = false;
+            }
+        }
+    }
+
+    private bool DetectGrabGesture()
+    {
+        // Simple grab detection: if thumb and index finger are close
+        // You can expand this with more sophisticated gesture detection
+        return true; // Placeholder - implement actual gesture detection
+    }
+
+    private void HandleGrabStart()
+    {
+        // Raycast from hand to find grabbable objects
+        RaycastHit hit;
+        if (Physics.Raycast(transform.position, transform.forward, out hit))
+        {
+            if (hit.collider.CompareTag("Grabbable"))
+            {
+                currentGrabbedObject = hit.collider.gameObject;
+                ObjectManipulation manipulation = currentGrabbedObject.GetComponent<ObjectManipulation>();
+                if (manipulation != null)
                 {
-                    manipulatable.OnGrab();
+                    manipulation.Grab(transform);
                 }
-
-                onObjectGrabbed?.Invoke(currentHeldObject);
             }
         }
+    }
 
-        private void ReleaseObject()
+    private void HandleGrabEnd()
+    {
+        if (currentGrabbedObject != null)
         {
-            if (currentHeldObject != null)
+            ObjectManipulation manipulation = currentGrabbedObject.GetComponent<ObjectManipulation>();
+            if (manipulation != null)
             {
-                var manipulatable = currentHeldObject.GetComponent<ObjectManipulation>();
-                if (manipulatable != null)
-                {
-                    // Calculate throw velocity based on recent hand motion (omitted for brevity)
-                    Vector3 throwVelocity = Vector3.forward; // Placeholder
-                    Vector3 throwAngularVelocity = Vector3.zero;
-                    
-                    manipulatable.OnRelease(throwVelocity, throwAngularVelocity);
-                }
-
-                onObjectReleased?.Invoke(currentHeldObject);
-                currentHeldObject = null;
+                manipulation.Release();
             }
-        }
-
-        private void OnDrawGizmosSelected()
-        {
-            if (pinchPoint != null)
-            {
-                Gizmos.color = Color.yellow;
-                Gizmos.DrawWireSphere(pinchPoint.position, grabRadius);
-            }
+            currentGrabbedObject = null;
         }
     }
 }

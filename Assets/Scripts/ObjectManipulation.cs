@@ -1,52 +1,62 @@
 using UnityEngine;
 
-namespace ZeroGTrainingLab
+public class ObjectManipulation : MonoBehaviour
 {
-    [RequireComponent(typeof(Rigidbody))]
-    public class ObjectManipulation : MonoBehaviour
+    private Rigidbody rb;
+    private Transform grabPoint;
+    private Vector3 lastPosition;
+    private bool isGrabbed = false;
+    private float throwForceMultiplier = 5f;
+
+    private void Awake()
     {
-        private Rigidbody rb;
-        private GravityManager gravityManager;
+        rb = GetComponent<Rigidbody>();
+        gameObject.tag = "Grabbable";
+    }
 
-        private void Awake()
+    private void Start()
+    {
+        GravityManager.Instance.RegisterBody(rb);
+    }
+
+    public void Grab(Transform hand)
+    {
+        isGrabbed = true;
+        grabPoint = hand;
+        lastPosition = transform.position;
+        rb.isKinematic = true; // Stop physics while grabbed
+    }
+
+    private void Update()
+    {
+        if (isGrabbed && grabPoint != null)
         {
-            rb = GetComponent<Rigidbody>();
-            gravityManager = FindObjectOfType<GravityManager>(); // Simple dependency injection
+            // Move object to follow hand
+            transform.position = grabPoint.position + grabPoint.forward * 0.3f;
             
-            // Ensure object starts floating
-            if (gravityManager != null)
-            {
-                gravityManager.RegisterObject(rb);
-            }
+            // Rotate with hand
+            transform.rotation = grabPoint.rotation;
         }
+    }
 
-        public void OnGrab()
+    public void Release()
+    {
+        if (isGrabbed)
         {
-            // When grabbed, physics should not control position - the hand does.
-            // set isKinematic to true for direct transform control
-            rb.isKinematic = true;
-        }
-
-        public void OnRelease(Vector3 velocity, Vector3 angularVelocity)
-        {
-            // Re-enable physics
+            isGrabbed = false;
             rb.isKinematic = false;
-
-            // Apply thrown forces
-            rb.velocity = velocity;
-            rb.angularVelocity = angularVelocity;
-
-            // Ensure gravity manager is still aware (it should be, but just in case)
-            if (gravityManager != null)
-            {
-                gravityManager.RegisterObject(rb);
-            }
+            
+            // Calculate throw velocity
+            Vector3 throwVelocity = (transform.position - lastPosition) * throwForceMultiplier;
+            rb.velocity = throwVelocity;
         }
+    }
 
-        private void OnCollisionEnter(Collision collision)
+    private void OnDestroy()
+    {
+        if (GravityManager.Instance != null)
         {
-            // Optional: Haptic feedback hook could go here
-            // Debug.Log($"Interactable collided with {collision.gameObject.name} with impact {collision.impulse.magnitude}");
+            GravityManager.Instance.UnregisterBody(rb);
         }
     }
 }

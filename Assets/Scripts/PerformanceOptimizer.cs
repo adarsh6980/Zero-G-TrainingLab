@@ -1,63 +1,54 @@
 using UnityEngine;
-using UnityEngine.Rendering;
+using UnityEngine.XR;
 
-namespace ZeroGTrainingLab
+public class PerformanceOptimizer : MonoBehaviour
 {
-    /// <summary>
-    /// Basic dynamic resolution / quality scaler for VR.
-    /// Targeted at maintaining steady framerates on mobile chipsets.
-    /// </summary>
-    public class PerformanceOptimizer : MonoBehaviour
+    [SerializeField] private int targetFrameRate = 90; // VR target
+    [SerializeField] private bool enableDynamicResolution = true;
+    [SerializeField] private float targetGPULoad = 0.8f;
+
+    private void Start()
     {
-        [Header("Targets")]
-        public float targetFPS = 72.0f;
-        public float checkInterval = 2.0f; // Check every 2 seconds
+        // Set target frame rate for VR
+        Application.targetFrameRate = targetFrameRate;
+        
+        // Enable VSync for smooth hand tracking
+        QualitySettings.vSyncCount = 1;
+        
+        // Optimize physics for VR
+        Time.fixedDeltaTime = 1f / targetFrameRate;
+        Physics.defaultSolverIterations = 4;
+        Physics.defaultSolverVelocityIterations = 1;
+    }
 
-        private float timer;
-        private int qualityLevel;
+    private void LateUpdate()
+    {
+        // Monitor performance
+        MonitorPerformance();
+    }
 
-        private void Start()
+    private void MonitorPerformance()
+    {
+        // Log frame timing for optimization
+        if (Time.frameCount % 300 == 0) // Check every 5 seconds at 60fps
         {
-            // Ensure we start at a reasonable level
-            qualityLevel = QualitySettings.GetQualityLevel();
-            
-            // Quest 2/3 supports 120Hz in some modes, try to request it
-            // Unity.XR.Oculus.Performance.TrySetDisplayRefreshRate(90f); 
+            float fps = 1f / Time.deltaTime;
+            Debug.Log($"Current FPS: {fps:F1}");
         }
+    }
 
-        private void Update()
+    public void OptimizeForHandTracking()
+    {
+        // Reduce physics calculation overhead
+        Physics.gravity = Vector3.zero;
+        
+        // Limit rigidbodies active at once
+        Rigidbody[] bodies = FindObjectsOfType<Rigidbody>();
+        foreach (var body in bodies)
         {
-            timer += Time.deltaTime;
-            if (timer > checkInterval)
+            if (!body.isKinematic)
             {
-                CheckPerformance();
-                timer = 0;
-            }
-        }
-
-        private void CheckPerformance()
-        {
-            float currentFPS = 1.0f / Time.smoothDeltaTime;
-
-            if (currentFPS < targetFPS - 5)
-            {
-                DecreaseQuality();
-            }
-            // Logic to increase quality could go here, but usually safer to stick to stable low
-        }
-
-        private void DecreaseQuality()
-        {
-            if (qualityLevel > 0)
-            {
-                qualityLevel--;
-                QualitySettings.SetQualityLevel(qualityLevel);
-                Debug.Log($"Performance drop detected. Lowering quality to level {qualityLevel}");
-            }
-            else
-            {
-                // Already at lowest connection, try reducing render scale
-                // XRSettings.eyeTextureResolutionScale *= 0.9f; 
+                body.constraints = RigidbodyConstraints.FreezeRotation;
             }
         }
     }
