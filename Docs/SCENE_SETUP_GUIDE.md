@@ -21,6 +21,7 @@ Follow this guide to configure your Unity project, scene hierarchy, and visuals.
    - **Graphics API**: Ensure **OpenGL ES 3.0** is first (or Vulkan if using recent Quest updates, but GLES3 is safer).
    - **Identification > Package Name**: `com.yourname.zerogtraining` (Change `yourname` to your name).
    - **Minimum API Level**: Android 12 (API level 31).
+   - **Architecture**: **ARM64**.
 
 ---
 
@@ -36,60 +37,67 @@ Create these materials in `Assets/Materials/` (Create > Material).
 
 ---
 
-## 🏗️ Part 3: Scene Hierarchy Setup
+## 🏗️ Part 3: Complete Scene Hierarchy
 
-Open `Assets/Scenes/ZeroGTrainingLab.unity` and create the following structure:
+Open `Assets/Scenes/ZeroGTrainingLab.unity` and match this hierarchy structure:
 
-### 1. Global Managers
-Create an empty GameObject named `GameManager`.
-- Attach **`GravityManager.cs`**.
-- Attach **`PerformanceOptimizer.cs`**.
-
-### 2. Lighting
-- **Directional Light**:
-  - **Color**: Slightly Blue (Space feel).
-  - **Intensity**: 1.2.
-  - **Shadow Type**: Hard Shadows.
-
-### 3. Environment
-Create an empty GameObject named `SpaceStation`.
-- **Tag**: Untagged.
-- **Components**:
-  - Add **Box Collider** (Size: 10, 1, 10) -> *Floor reference*.
-  - Add **Mesh Renderer** (optional visual floor) -> Material: `SpaceStation`.
-
-### 4. Interactive Objects (TrainingComponents)
-Create 2-3 primitive objects (Cube, Cylinder). For each:
-- **Tag**: `Grabbable` (You may need to Add Tag).
-- **Material**: `MetallicComponent`.
-- **Components**:
-  - **Rigidbody**:
-    - Mass: `1`.
-    - Drag: `0.1`.
-    - Angular Drag: `0.05`.
-    - Use Gravity: **Unchecked** (OFF).
-    - Collision Detection: **Continuous**.
-  - **Box/Capsule Collider**.
-  - **`ObjectManipulation.cs`**.
-
-### 5. Objectives (TargetZones)
-Create empty GameObjects positioned where you want the "Drop Zone".
-- **Visuals**: Add a child Sphere/Cube with `TargetZoneGlow` material.
-- **Components**:
-  - **Collider**: Is Trigger **Checked**.
-
-### 6. UI Overlay
-1. Right-click > UI > Canvas.
-2. **Canvas Scaler**: Scale with Screen Size.
-3. Add **TextMeshPro - Text (UI)**.
-   - Position: Top-Center.
-   - Attach **`TrainingObjective.cs`** to the Canvas or a dedicated UI Manager object.
-   - Assign the Text element to the script's `Objective Display` field.
+```text
+Scene: ZeroGTrainingLab
+├── GameManager
+│   ├── GravityManager.cs
+│   ├── PerformanceOptimizer.cs
+│   └── Camera Offset / XR Origin (XR Rig)
+│
+├── Lighting
+│   ├── Directional Light (Sun)
+│   └── Ambient Settings
+│
+├── SpaceStation (Parent)
+│   ├── Floor (Cube, Scaled 10,1,10)
+│   ├── Walls (Cubes)
+│   └── Docking Port (Optional Visuals)
+│
+├── TrainingObjects (Parent)
+│   ├── Component_A (Primitive Cube)
+│   │   ├── Rigidbody (Mass: 1, Drag: 0.1, AngDrag: 0.05, UseGravity: OFF)
+│   │   ├── Box Collider
+│   │   └── ObjectManipulation.cs
+│   ├── Component_B
+│   └── Component_C
+│
+├── TargetZones (Parent)
+│   ├── TargetZone_A (Position: X=5, Y=0, Z=0)
+│   ├── TargetZone_B (Position: X=-5, Y=0, Z=0)
+│   └── TargetZone_C (Position: X=0, Y=5, Z=0)
+│
+├── UI (Canvas)
+│   └── Canvas
+│       ├── ObjectiveText (TextMeshPro)
+│       └── TrainingObjective.cs (Attached here or to Manager)
+│
+└── Environment (Optional)
+    └── Starfield (Skybox)
+```
 
 ---
 
-## ✅ Checklist
-- [ ] XR Plug-in Management is configured for OpenXR.
-- [ ] Materials are created and assigned.
-- [ ] `GameManager` exists with `GravityManager` script.
-- [ ] `Grabbable` objects have Rigidbodies with `Use Gravity: False`.
+## 🔧 Part 4: Key Configuration Values
+
+Tune these values in the Inspector for the best experience.
+
+### GameManager (GravityManager)
+- **Gravity Scale**: `0` (True Zero-G).
+- **Air Resistance**: `0.99` (Simulates thick space vacuum or pressurized module air).
+
+### Managers (PerformanceOptimizer)
+- **Target Frame Rate**: `90` (Standard for Quest).
+
+### XR Origin (HandInteractionHandler)
+- Locate the object with `HandInteractionHandler` (likely on your Hand prefab or XR Rig).
+- **Grab Threshold**: `0.8` (Fingers must be close to pinch).
+
+### Grabbable Objects (ObjectManipulation)
+- **Throw Force Multiplier**: `5.0` (Amplifies hand movement for satisfying throws).
+
+### UI / Logic (TrainingObjective)
+- **Proximity Threshold**: `0.5` (Accuracy required for placing objects in zones).

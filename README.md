@@ -62,6 +62,10 @@ ZeroGTrainingLab/
     - Open `Assets/Scenes/ZeroGTrainingLab.unity`.
     - Hit Play to test with simulated hands.
 
+## 🧪 Testing
+
+For detailed instructions on testing in the Editor (using XR Simulation) or building for Meta Quest, please refer to the [Testing Guide](Docs/TESTING_GUIDE.md).
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please review the [Architecture Guide](Docs/ARCHITECTURE.md) before submitting a PR.
